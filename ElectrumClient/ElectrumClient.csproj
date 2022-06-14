@@ -9,7 +9,7 @@
     <Company>Hevanto</Company>
     <Description>C# Electrum client with NBitcoin compatible interface</Description>
     <PackageTags>bitcoin;electrum</PackageTags>
-    <PackageLicenseFile>C:\Dev\BTC\ElectrumClient\ElectrumClient\LICENSE</PackageLicenseFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
