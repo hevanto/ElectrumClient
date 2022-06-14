@@ -4,6 +4,12 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>Hevanto_$(AssemblyName)</PackageId>
+    <Authors>MaartenHeremans</Authors>
+    <Company>Hevanto</Company>
+    <Description>C# Electrum client with NBitcoin compatible interface</Description>
+    <PackageTags>bitcoin;electrum</PackageTags>
+    <PackageLicenseFile>C:\Dev\BTC\ElectrumClient\LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>

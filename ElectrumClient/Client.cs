@@ -21,7 +21,7 @@ namespace ElectrumClient
         private const string DONATION_ADDRESS = "bc1qg5vc0kn4997l2x8m3vnjgmekca49y8va55pje7";
 
         private static readonly int BUFFERSIZE = 32;
-        private static readonly string CLIENT = "CSElectrum 1.0";
+        private static readonly string CLIENT = "Hevanto ElectrumClient 1.0";
         private static readonly string PROTO_MIN = "1.4";
         private static readonly string PROTO_MAX = "1.4";
 
