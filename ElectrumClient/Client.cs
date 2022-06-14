@@ -295,7 +295,7 @@ namespace ElectrumClient
             int messageId = 0;
             if (_scriptHashSubscriptionIndex.TryGetValue(scriptHash, out messageId))
             {
-                string sh = scriptHash;
+                string? sh = scriptHash;
                 if (_scriptHashSubscription.TryRemove(messageId, out sh)) _scriptHashSubscriptionIndex.TryRemove(sh, out messageId);
             }
 

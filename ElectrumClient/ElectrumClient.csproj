@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -9,7 +9,7 @@
     <Company>Hevanto</Company>
     <Description>C# Electrum client with NBitcoin compatible interface</Description>
     <PackageTags>bitcoin;electrum</PackageTags>
-    <PackageLicenseFile>C:\Dev\BTC\ElectrumClient\LICENSE</PackageLicenseFile>
+    <PackageLicenseFile>C:\Dev\BTC\ElectrumClient\ElectrumClient\LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
