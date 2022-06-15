@@ -1,11 +1,12 @@
 ﻿using ElectrumClient.Converters;
+using ElectrumClient.Hashing;
 using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
     public interface IServerFeatures
     {
-        public string GenesisHash { get; }
+        public IHash GenesisHash { get; }
         public IList<IHost> Hosts { get; }
         public string ProtocolMax { get; }
         public string ProtocolMin { get; }
@@ -31,7 +32,7 @@ namespace ElectrumClient.Response
         [JsonProperty("result")]
         internal ServerFeaturesResult Result { get; set; }
 
-        public string GenesisHash { get { return Result.GenesisHash; } }
+        public IHash GenesisHash { get { return Result.GenesisHash; } }
         public IList<IHost> Hosts
         {
             get
@@ -60,7 +61,7 @@ namespace ElectrumClient.Response
             }
 
             [JsonProperty("genesis_hash")]
-            public string GenesisHash { get; set;}
+            public Hash GenesisHash { get; set;}
 
             [JsonProperty("hosts")]
             [JsonConverter(typeof(HostConverter))]

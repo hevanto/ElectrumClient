@@ -1,11 +1,12 @@
-﻿using Newtonsoft.Json;
+﻿using ElectrumClient.Hashing;
+using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
     public interface IScriptHashStatus
     {
-        public string ScriptHash { get; }
-        public string Hash { get; }
+        public IHash ScriptHash { get; }
+        public IHash Hash { get; }
     }
 
     internal class ScriptHashStatus : ResponseBase, IScriptHashStatus
@@ -18,17 +19,17 @@ namespace ElectrumClient.Response
         [JsonProperty("result")]
         internal StatusResult Result { get; set; }
 
-        public string ScriptHash {
+        public IHash ScriptHash {
             get { return Result.ScriptHash; }
-            set { Result.ScriptHash = value; }
+            set { Result.ScriptHash = new Hash(value.Hex, true); }
         }
 
-        public string Hash {  get { return Result.Hash; } }
+        public IHash Hash {  get { return Result.Hash; } }
 
         internal static ScriptHashStatus FromJson(string? scriptHash, string json)
         {
             var status = JsonConvert.DeserializeObject<ScriptHashStatus>(json) ?? new ScriptHashStatus();
-            if (scriptHash != null) status.Result.ScriptHash = scriptHash;
+            if (scriptHash != null) status.Result.ScriptHash = new Hash((IHex)new Hex(scriptHash), true);
             return status;
         }
 
@@ -52,8 +53,8 @@ namespace ElectrumClient.Response
 
             internal StatusResult(string scriptHash, string hash)
             {
-                ScriptHash = scriptHash;
-                Hash = hash;
+                ScriptHash = new Hash((IHex)new Hex(scriptHash), true);
+                Hash = new Hash((IHex)new Hex(hash));
             }
 
             public static implicit operator StatusResult(string hash)
@@ -61,8 +62,8 @@ namespace ElectrumClient.Response
                 return new StatusResult(hash);
             }
 
-            public string ScriptHash { get; set;  }
-            public string Hash { get; set; }
+            public Hash ScriptHash { get; set;  }
+            public Hash Hash { get; set; }
         }
     }
 }

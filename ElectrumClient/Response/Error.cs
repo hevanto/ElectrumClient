@@ -30,6 +30,12 @@ namespace ElectrumClient.Response
                 Message = "";
             }
 
+            internal ErrorResult(string message)
+            {
+                Code = 0;
+                Message = message;
+            }
+
             [JsonProperty("code")]
             public int Code { get; set; }
 

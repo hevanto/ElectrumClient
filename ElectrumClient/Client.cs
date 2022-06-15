@@ -1,4 +1,5 @@
-﻿using ElectrumClient.Request;
+﻿using ElectrumClient.Hashing;
+using ElectrumClient.Request;
 using ElectrumClient.Response;
 using NBitcoin;
 using System.Collections.Concurrent;
@@ -10,12 +11,12 @@ namespace ElectrumClient
 {
     public class Client : IDisposable
     {
-        public const string DEFAULT_TETNET_HOST = "blockstream.info";
-        public const int DEFAULT_TESTNET_PORT = 993;
+        public const string DEFAULT_TETNET_HOST = "electrum3.cipig.net";
+        public const int DEFAULT_TESTNET_PORT = 20068;
         public const bool DEFAULT_TESTNET_USESSL = true;
 
-        public const string DEFAULT_MAINNET_HOST = "blockstream.info";
-        public const int DEFAULT_MAINNET_PORT = 700;
+        public const string DEFAULT_MAINNET_HOST = "electrum3.cipig.net";
+        public const int DEFAULT_MAINNET_PORT = 20000;
         public const bool DEFAULT_MAINNET_USESSL = true;
 
         private const string DONATION_ADDRESS = "bc1qg5vc0kn4997l2x8m3vnjgmekca49y8va55pje7";
@@ -42,6 +43,7 @@ namespace ElectrumClient
         private Stream? _stream;
 
         private CancellationTokenSource _cancelSource;
+        private IHashFunction _scriptHashFunction;
 
         private int _msgIdCntr;
 
@@ -77,7 +79,7 @@ namespace ElectrumClient
             _port = port;
             _useSSL = useSSL;
 
-            TimeoutMs = 10000;
+            TimeoutMs = 30000;
             KeepAliveIntervalMs = 30000;
 
             _cancelSource = new CancellationTokenSource();
@@ -91,6 +93,8 @@ namespace ElectrumClient
 
             _scriptHashSubscription = new ConcurrentDictionary<int, string>();
             _scriptHashSubscriptionIndex = new ConcurrentDictionary<string, int>();
+
+            _scriptHashFunction = HashFunctionFactory.GetHashFunction();
         }
 
         public bool Connected { get { return _tcpClient != null ? _tcpClient.Connected : false; } }
@@ -121,6 +125,7 @@ namespace ElectrumClient
                 Close();
                 return false;
             }
+            await GetFeaturesAsync();
             await SubscribeToNewTipEventsAsync();
             return true;
         }
@@ -143,12 +148,12 @@ namespace ElectrumClient
             _tcpClient = null;
         }
 
-        public async Task<IAsyncResponse<string, IError>> GetBlockHeaderAsync(long height)
+        public async Task<IAsyncResponse<IHex, IError>> GetBlockHeaderAsync(long height)
         {
             var request = new BlockChainBlockHeaderRequest(height, null);
             request.MessageId = AllocMessageId();
             var resp = await SendAndWaitForResponse<BlockChainBlockHeaderRequest, AsyncResponse<Response.BlockHeader, Error, IBlockHeader, IError>>(request);
-            return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.Header : null, resp.ErrorValue);
+            return new AsyncResponse<IHex, Error, IHex, IError>(resp.ResultValue != null ? resp.ResultValue.Header : null, resp.ErrorValue);
         }
 
         public async Task<IAsyncResponse<IBlockHeader, IError>> GetBlockHeaderAsync(long height, long checkPointHeight)
@@ -158,15 +163,9 @@ namespace ElectrumClient
             return await SendAndWaitForResponse<BlockChainBlockHeaderRequest, AsyncResponse<Response.BlockHeader, Error, IBlockHeader, IError>>(request);
         }
 
-        public string GetBlockHeader(long height, out IError? error)
-        {
-            return GetBlockHeaderAsync(height).Result.ToSyncResponse(out error) ?? "";
-        }
+        public IHex GetBlockHeader(long height, out IError? error) => GetBlockHeaderAsync(height).Result.ToSyncResponse(out error) ?? Hex.Empty;
+        public IBlockHeader GetBlockHeader(long height, long checkpointHeight, out IError? error) => GetBlockHeaderAsync(height, checkpointHeight).Result.ToSyncResponse(out error) ?? new Response.BlockHeader();
 
-        public IBlockHeader GetBlockHeader(long height, long checkpointHeight, out IError? error)
-        {
-            return GetBlockHeaderAsync(height, checkpointHeight).Result.ToSyncResponse(out error) ?? new Response.BlockHeader();
-        }
 
         public async Task<IAsyncResponse<IBlockHeaders, IError>> GetBlockHeadersAsync(long startHeight, long count)
         {
@@ -182,15 +181,8 @@ namespace ElectrumClient
             return await SendAndWaitForResponse<BlockChainBlockHeadersRequest, AsyncResponse<BlockHeaders, Error, IBlockHeaders, IError>>(request);
         }
 
-        public IBlockHeaders GetBlockHeaders(long startHeight, long count, out IError? error)
-        {
-            return GetBlockHeadersAsync(startHeight, count).Result.ToSyncResponse(out error) ?? new BlockHeaders();
-        }
-
-        public IBlockHeaders GetBlockHeaders(long startHeight, long count, long checkPointHeight, out IError? error)
-        {
-            return GetBlockHeadersAsync(startHeight, count, checkPointHeight).Result.ToSyncResponse(out error) ?? new BlockHeaders();
-        }
+        public IBlockHeaders GetBlockHeaders(long startHeight, long count, out IError? error) => GetBlockHeadersAsync(startHeight, count).Result.ToSyncResponse(out error) ?? new BlockHeaders();
+        public IBlockHeaders GetBlockHeaders(long startHeight, long count, long checkPointHeight, out IError? error) => GetBlockHeadersAsync(startHeight, count, checkPointHeight).Result.ToSyncResponse(out error) ?? new BlockHeaders();
 
         public async Task<IAsyncResponse<IFee, IError>> EstimateFeeAsync(long targetConfirmation)
         {
@@ -201,10 +193,7 @@ namespace ElectrumClient
             return resp;
         }
 
-        public IFee EstimateFee(long targetConfirmation, out IError? error)
-        {
-            return EstimateFeeAsync(targetConfirmation).Result.ToSyncResponse(out error) ?? new Fee(targetConfirmation);
-        }
+        public IFee EstimateFee(long targetConfirmation, out IError? error) => EstimateFeeAsync(targetConfirmation).Result.ToSyncResponse(out error) ?? new Fee(targetConfirmation);
 
         public async Task<IAsyncResponse<Money, IError>> RelayFeeAsync()
         {
@@ -214,24 +203,20 @@ namespace ElectrumClient
             return new AsyncResponse<Money, Error, Money, IError>(resp.ResultValue != null ? resp.ResultValue.Amount : null, resp.ErrorValue);
         }
 
-        public Money RelayFee(out IError? error)
-        {
-            return RelayFeeAsync().Result.ToSyncResponse(out error) ?? Money.Zero;
-        }
+        public Money RelayFee(out IError? error) => RelayFeeAsync().Result.ToSyncResponse(out error) ?? Money.Zero;
 
-        public async Task<IAsyncResponse<IBalance, IError>> GetScriptBalanceAsync(string scriptHash)
+        public async Task<IAsyncResponse<IBalance, IError>> GetScriptBalanceAsync(IHash scriptHash)
         {
             var request = new BlockChainScriptHashGetBalanceRequest(scriptHash);
             request.MessageId = AllocMessageId();
             return await SendAndWaitForResponse<BlockChainScriptHashGetBalanceRequest, AsyncResponse<Balance, Error, IBalance, IError>>(request);
         }
 
-        public IBalance GetScriptBalance(string scriptHash, out IError? error)
-        {
-            return GetScriptBalanceAsync(scriptHash).Result.ToSyncResponse(out error) ?? new Balance();
-        }
+        private async Task<IAsyncResponse<IBalance, IError>> GetScriptBalanceAsync(Script script) => await GetScriptBalanceAsync(_scriptHashFunction.Hash(script));
+        public IBalance GetScriptBalance(IHash scriptHash, out IError? error) => GetScriptBalanceAsync(scriptHash).Result.ToSyncResponse(out error) ?? new Balance();
+        public IBalance GetScriptBalance(Script script, out IError? error) => GetScriptBalance(_scriptHashFunction.Hash(script), out error);
 
-        public async Task<IAsyncResponse<IList<ITransactionInfo>, IError>> GetScriptHistoryAsync(string scriptHash)
+        public async Task<IAsyncResponse<IList<ITransactionInfo>, IError>> GetScriptHistoryAsync(IHash scriptHash)
         {
             var request = new BlockChainScriptHashGetHistoryRequest(scriptHash);
             request.MessageId = AllocMessageId();
@@ -239,12 +224,11 @@ namespace ElectrumClient
             return new AsyncResponse<IList<ITransactionInfo>, Error, IList<ITransactionInfo>, IError>(resp.ResultValue != null ? resp.ResultValue.List : null, resp.ErrorValue);
         }
 
-        public IList<ITransactionInfo> GetSciprtHistory(string scriptHash, out IError? error)
-        {
-            return GetScriptHistoryAsync(scriptHash).Result.ToSyncResponse(out error) ?? new List<ITransactionInfo>();
-        }
+        public async Task<IAsyncResponse<IList<ITransactionInfo>, IError>> GetScriptHistoryAsync(Script script) => await GetScriptHistoryAsync(_scriptHashFunction.Hash(script));
+        public IList<ITransactionInfo> GetScriptHistory(IHash scriptHash, out IError? error) => GetScriptHistoryAsync(scriptHash).Result.ToSyncResponse(out error) ?? new List<ITransactionInfo>();
+        public IList<ITransactionInfo> GetScriptHistory(Script script, out IError? error) => GetScriptHistory(_scriptHashFunction.Hash(script), out error);
 
-        public async Task<IAsyncResponse<IList<IMempoolTransactionInfo>, IError>> GetScriptMempoolAsync(string scriptHash)
+        public async Task<IAsyncResponse<IList<IMempoolTransactionInfo>, IError>> GetScriptMempoolAsync(IHash scriptHash)
         {
             var request = new BlockChainScriptHashGetMempoolRequest(scriptHash);
             request.MessageId = AllocMessageId();
@@ -252,12 +236,12 @@ namespace ElectrumClient
             return new AsyncResponse<IList<IMempoolTransactionInfo>, Error, IList<IMempoolTransactionInfo>, IError>(resp.ResultValue != null ? resp.ResultValue.List : null, resp.ErrorValue);
         }
 
-        public IList<IMempoolTransactionInfo> GetSciptMempool(string scriptHash, out IError? error)
-        {
-            return GetScriptMempoolAsync(scriptHash).Result.ToSyncResponse(out error) ?? new List<IMempoolTransactionInfo>();
-        }
+        public async Task<IAsyncResponse<IList<IMempoolTransactionInfo>, IError>> GetScriptMempoolAsync(Script script) => await GetScriptMempoolAsync(_scriptHashFunction.Hash(script));
+        public IList<IMempoolTransactionInfo> GetScriptMempool(IHash scriptHash, out IError? error) => GetScriptMempoolAsync(scriptHash).Result.ToSyncResponse(out error) ?? new List<IMempoolTransactionInfo>();
+        public IList<IMempoolTransactionInfo> GetScriptMempool(Script script, out IError? error) => GetScriptMempool(_scriptHashFunction.Hash(script), out error);
 
-        public async Task<IAsyncResponse<IList<IUnspentOutput>, IError>> GetScriptUnspentOutputsAsync(string scriptHash)
+
+        public async Task<IAsyncResponse<IList<IUnspentOutput>, IError>> GetScriptUnspentOutputsAsync(IHash scriptHash)
         {
             var request = new BlockChainScriptHashListUnspent(scriptHash);
             request.MessageId = AllocMessageId();
@@ -265,37 +249,35 @@ namespace ElectrumClient
             return new AsyncResponse<IList<IUnspentOutput>, Error, IList<IUnspentOutput>, IError>(resp.ResultValue != null ? resp.ResultValue.List : null, resp.ErrorValue);
         }
 
-        public IList<IUnspentOutput> GetScriptUnspentOutputs(string scriptHash, out IError? error)
-        {
-            return GetScriptUnspentOutputsAsync(scriptHash).Result.ToSyncResponse(out error) ?? new List<IUnspentOutput>();
-        }
+        public async Task<IAsyncResponse<IList<IUnspentOutput>, IError>> GetScriptUnspentOutputsAsync(Script script) => await GetScriptUnspentOutputsAsync(_scriptHashFunction.Hash(script));
+        public IList<IUnspentOutput> GetScriptUnspentOutputs(IHash scriptHash, out IError? error) => GetScriptUnspentOutputsAsync(scriptHash).Result.ToSyncResponse(out error) ?? new List<IUnspentOutput>();
+        public IList<IUnspentOutput> GetScriptUnspentOutputs(Script script, out IError? error) => GetScriptUnspentOutputs(_scriptHashFunction.Hash(script), out error);
 
-        public async Task<IAsyncResponse<string, IError>> SubscribeToScriptHashAsync(string scriptHash)
+        public async Task<IAsyncResponse<IHash, IError>> SubscribeToScriptHashAsync(IHash scriptHash)
         {
             var request = new BlockChainScriptHashSubscribeRequest(scriptHash);
             request.MessageId = AllocMessageId();
 
-            _scriptHashSubscription.TryAdd(request.MessageId, scriptHash);
-            _scriptHashSubscriptionIndex.TryAdd(scriptHash, request.MessageId);
+            _scriptHashSubscription.TryAdd(request.MessageId, scriptHash.ToString());
+            _scriptHashSubscriptionIndex.TryAdd(scriptHash.ToString(), request.MessageId);
 
             var resp = await SendAndWaitForResponse<BlockChainScriptHashSubscribeRequest, AsyncResponse<ScriptHashStatus, Error, IScriptHashStatus, IError>>(request);
-            return new AsyncResponse<string, Error, String, IError>(resp.ResultValue != null ? resp.ResultValue.Hash : "", resp.ErrorValue);
+            return new AsyncResponse<IHash, Error, IHash, IError>(resp.ResultValue != null ? resp.ResultValue.Hash : Hash.Empty, resp.ErrorValue);
         }
 
-        public string SubscribetoScriptHash(string scriptHash, out IError? error)
-        {
-            return SubscribeToScriptHashAsync(scriptHash).Result.ToSyncResponse(out error) ?? "";
-        }
+        public async Task<IAsyncResponse<IHash, IError>> SubscribeToScriptHashAsync(Script script) => await SubscribeToScriptHashAsync(_scriptHashFunction.Hash(script));
+        public IHash SubscribeToScriptHash(IHash scriptHash, out IError? error) => SubscribeToScriptHashAsync(scriptHash).Result.ToSyncResponse(out error) ?? Hash.Empty;
+        public IHash SubscribeToScriptHash(Script script, out IError? error) => SubscribeToScriptHash(_scriptHashFunction.Hash(script), out error);
 
-        public async Task<IAsyncResponse<bool, IError>> UnsubscribeFromScriptHashAsync(string scriptHash)
+        public async Task<IAsyncResponse<bool, IError>> UnsubscribeFromScriptHashAsync(IHash scriptHash)
         {
             var request = new BlockChainScriptHashUnsubscribeRequest(scriptHash);
             request.MessageId = AllocMessageId();
 
             int messageId = 0;
-            if (_scriptHashSubscriptionIndex.TryGetValue(scriptHash, out messageId))
+            if (_scriptHashSubscriptionIndex.TryGetValue(scriptHash.ToString(), out messageId))
             {
-                string? sh = scriptHash;
+                string? sh = scriptHash.ToString();
                 if (_scriptHashSubscription.TryRemove(messageId, out sh)) _scriptHashSubscriptionIndex.TryRemove(sh, out messageId);
             }
 
@@ -303,73 +285,56 @@ namespace ElectrumClient
             return new AsyncResponse<bool, Error, bool, IError>(resp.ResultValue != null ? resp.ResultValue.Value : false, resp.ErrorValue);
         }
 
-        public bool UnsubscribeFromScriptHash(string scriptHash, out IError? error)
-        {
-            return UnsubscribeFromScriptHashAsync(scriptHash).Result.ToSyncResponse(out error);
-        }
+        public async Task<IAsyncResponse<bool, IError>> UnsubscribeFromScriptHashAsync(Script script) => await UnsubscribeFromScriptHashAsync(_scriptHashFunction.Hash(script));
+        public bool UnsubscribeFromScriptHash(IHash scriptHash, out IError? error) => UnsubscribeFromScriptHashAsync(scriptHash).Result.ToSyncResponse(out error);
+        public bool UnsubscribeFromScriptHash(Script script, out IError? error) => UnsubscribeFromScriptHash(_scriptHashFunction.Hash(script), out error);
 
-        public async Task<IAsyncResponse<string, IError>> BroadcastTransactionAsync(string rawTx)
+        public async Task<IAsyncResponse<IHash, IError>> BroadcastTransactionAsync(IHex rawTx)
         {
             var request = new BlockChainTransactionBroadcastRequest(rawTx);
             request.MessageId = AllocMessageId();
             var resp = await SendAndWaitForResponse<BlockChainTransactionBroadcastRequest, AsyncResponse<Transaction<BroadcastTransaction>, Error, ITransaction, IError>>(request);
-            return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.Hash : "", resp.ErrorValue);
+            return new AsyncResponse<IHash, Error, IHash, IError>(resp.ResultValue != null ? resp.ResultValue.Hash : Hash.Empty, resp.ErrorValue);
         }
+        public async Task<IAsyncResponse<IHash, IError>> BroadcastTransactionAsync(Transaction tx) => await BroadcastTransactionAsync(tx.ToIHex());
+        public IHash BroadcastTransaction(IHex rawTx, out IError? error) => BroadcastTransactionAsync(rawTx).Result.ToSyncResponse(out error) ?? Hash.Empty;
+        public IHash BroadcastTransaction(Transaction tx, out IError? error) => BroadcastTransaction(tx.ToIHex(), out error);
 
-        public string BroadcastTransaction(string rawTx, out IError? error)
-        {
-            return BroadcastTransactionAsync(rawTx).Result.ToSyncResponse(out error) ?? "";
-        }
-
-        public async Task<IAsyncResponse<string, IError>> GetRawTransactionAsync(string txHash)
+        public async Task<IAsyncResponse<IHex, IError>> GetRawTransactionAsync(IHash txHash)
         {
             var request = new BlockChainTransactionGetRequest(txHash, false);
             request.MessageId = AllocMessageId();
             var resp = await SendAndWaitForResponse<BlockChainTransactionGetRequest, AsyncResponse<Transaction<OnChainTransaction>, Error, ITransaction, IError>>(request);
-            return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.Hex : "", resp.ErrorValue);
+            return new AsyncResponse<IHex, Error, IHex, IError>(resp.ResultValue != null ? resp.ResultValue.Hex : Hex.Empty, resp.ErrorValue);
         }
-
-        public string GetRawTransaction(string txHash, out IError? error)
-        {
-            return GetRawTransactionAsync(txHash).Result.ToSyncResponse(out error) ?? "";
-        }
-
-        public async Task<IAsyncResponse<ITransaction, IError>> GetTransactionAsync(string txHash)
+        public IHex GetRawTransaction(IHash txHash, out IError? error) => GetRawTransactionAsync(txHash).Result.ToSyncResponse(out error) ?? Hex.Empty;
+        
+        public async Task<IAsyncResponse<ITransaction, IError>> GetTransactionAsync(IHash txHash)
         {
             var request = new BlockChainTransactionGetRequest(txHash, true);
             request.MessageId = AllocMessageId();
             return await SendAndWaitForResponse<BlockChainTransactionGetRequest, AsyncResponse<Transaction<OnChainTransaction>, Error, ITransaction, IError>>(request);
         }
+        public ITransaction GetTransaction(IHash txHash, out IError? error) => GetTransactionAsync(txHash).Result.ToSyncResponse(out error) ?? new Transaction<OnChainTransaction>();
 
-        public ITransaction GetTransaction(string txHash, out IError? error)
-        {
-            return GetTransactionAsync(txHash).Result.ToSyncResponse(out error) ?? new Transaction<OnChainTransaction>();
-        }
-
-        public async Task<IAsyncResponse<IMerkleInfo, IError>> GetTransactionMerkleAsync(string txHash, long height)
+        public async Task<IAsyncResponse<IMerkleInfo, IError>> GetTransactionMerkleAsync(IHash txHash, long height)
         {
             var request = new BlockChainTransactionGetMerkleRequest(txHash, height);
             request.MessageId = AllocMessageId();
             return await SendAndWaitForResponse<BlockChainTransactionGetMerkleRequest, AsyncResponse<MerkleInfo, Error, IMerkleInfo, IError>>(request);
         }
 
-        public IMerkleInfo GetTransactionMerkle(string txHash, long height, out IError? error)
-        {
-            return GetTransactionMerkleAsync(txHash, height).Result.ToSyncResponse(out error) ?? new MerkleInfo();
-        }
+        public IMerkleInfo GetTransactionMerkle(IHash txHash, long height, out IError? error) => GetTransactionMerkleAsync(txHash, height).Result.ToSyncResponse(out error) ?? new MerkleInfo();
 
-        public async Task<IAsyncResponse<string, IError>> GetTransactionFromBlockAsync(long height, long txPos)
+        public async Task<IAsyncResponse<IHash, IError>> GetTransactionFromBlockAsync(long height, long txPos)
         {
             var request = new BlockChainTransactionIdFromPosRequest(height, txPos, false);
             request.MessageId = AllocMessageId();
             var resp = await SendAndWaitForResponse<BlockChainTransactionIdFromPosRequest, AsyncResponse<TransactionInfo, Error, ITransactionInfo, IError>>(request);
-            return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.TxHash : "", resp.ErrorValue);
+            return new AsyncResponse<IHash, Error, IHash, IError>(resp.ResultValue != null ? resp.ResultValue.TxHash : Hash.Empty, resp.ErrorValue);
         }
 
-        public string GetTransactionFromBlock(long height, long txPos, out IError? error)
-        {
-            return GetTransactionFromBlockAsync(height, txPos).Result.ToSyncResponse(out error) ?? "";
-        }
+        public IHash GetTransactionFromBlock(long height, long txPos, out IError? error) => GetTransactionFromBlockAsync(height, txPos).Result.ToSyncResponse(out error) ?? Hash.Empty;
 
         public async Task<IAsyncResponse<ITransactionInfo, IError>> GetTransactionFromBlockWithMerkleAsync(long height, long txPos)
         {
@@ -378,10 +343,7 @@ namespace ElectrumClient
             return await SendAndWaitForResponse<BlockChainTransactionIdFromPosRequest, AsyncResponse<TransactionInfo, Error, ITransactionInfo, IError>>(request);
         }
 
-        public ITransactionInfo GetTransactionFromBlockWihtMerkle(long height, long txPos, out IError? error)
-        {
-            return GetTransactionFromBlockWithMerkleAsync(height, txPos).Result.ToSyncResponse(out error) ?? new TransactionInfo();
-        }
+        public ITransactionInfo GetTransactionFromBlockWihtMerkle(long height, long txPos, out IError? error) => GetTransactionFromBlockWithMerkleAsync(height, txPos).Result.ToSyncResponse(out error) ?? new TransactionInfo();
 
         public async Task<IAsyncResponse<IList<IFeeHistogramPoint>, IError>> GetMempoolFeeHistogramAsync()
         {
@@ -391,10 +353,7 @@ namespace ElectrumClient
             return new AsyncResponse<IList<IFeeHistogramPoint>, Error, IList<IFeeHistogramPoint>, IError>(resp.ResultValue != null ? resp.ResultValue.List : null, resp.ErrorValue);
         }
 
-        public IList<IFeeHistogramPoint> GetMempoolFeeHistogram(out IError? error)
-        {
-            return GetMempoolFeeHistogramAsync().Result.ToSyncResponse(out error) ?? new List<IFeeHistogramPoint>();
-        }
+        public IList<IFeeHistogramPoint> GetMempoolFeeHistogram(out IError? error) => GetMempoolFeeHistogramAsync().Result.ToSyncResponse(out error) ?? new List<IFeeHistogramPoint>();
 
         public async Task<IAsyncResponse<string, IError>> GetServerBannerAsync()
         {
@@ -404,10 +363,7 @@ namespace ElectrumClient
             return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.Value : null, resp.ErrorValue);
         }
 
-        public string GetServerBanner(out IError? error)
-        {
-            return GetServerBannerAsync().Result.ToSyncResponse(out error) ?? "";
-        }
+        public string GetServerBanner(out IError? error) => GetServerBannerAsync().Result.ToSyncResponse(out error) ?? "";
 
         public async Task<IAsyncResponse<string, IError>> GetServerDonationAddressAsync()
         {
@@ -417,10 +373,7 @@ namespace ElectrumClient
             return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.Value : null, resp.ErrorValue);
         }
 
-        public string GetServerDonationAddress(out IError? error)
-        {
-            return GetServerDonationAddressAsync().Result.ToSyncResponse(out error) ?? DONATION_ADDRESS;
-        }
+        public string GetServerDonationAddress(out IError? error) => GetServerDonationAddressAsync().Result.ToSyncResponse(out error) ?? DONATION_ADDRESS;
 
         public string GetClientDonationAddress()
         {
@@ -434,10 +387,7 @@ namespace ElectrumClient
             return await SendAndWaitForResponse<ServerFeaturesRequest, AsyncResponse<ServerFeatures, Error, IServerFeatures, IError>>(request);
         }
 
-        public IServerFeatures GetServerFeatures(out IError? error)
-        {
-            return GetServerFeaturesAsync().Result.ToSyncResponse(out error) ?? new ServerFeatures();
-        }
+        public IServerFeatures GetServerFeatures(out IError? error) => GetServerFeaturesAsync().Result.ToSyncResponse(out error) ?? new ServerFeatures();
 
         public async Task<IAsyncResponse<IList<IPeer>, IError>> GetServerPeersAsync()
         {
@@ -447,10 +397,7 @@ namespace ElectrumClient
             return new AsyncResponse<IList<IPeer>, Error, IList<IPeer>, IError>(resp.ResultValue != null ? resp.ResultValue.List : null, resp.ErrorValue);
         }
 
-        public IList<IPeer> GetServerPeers(out IError? error)
-        {
-            return GetServerPeersAsync().Result.ToSyncResponse(out error) ?? new List<IPeer>();
-        }
+        public IList<IPeer> GetServerPeers(out IError? error) => GetServerPeersAsync().Result.ToSyncResponse(out error) ?? new List<IPeer>();
 
         public async Task<IAsyncResponse<bool, IError>> PingAsync()
         {
@@ -460,10 +407,7 @@ namespace ElectrumClient
             return new AsyncResponse<bool, Error, bool, IError>(resp.IsSuccess, resp.ErrorValue);
         }
 
-        public bool Ping(out IError? error)
-        {
-            return PingAsync().Result.ToSyncResponse(out error);
-        }
+        public bool Ping(out IError? error) => PingAsync().Result.ToSyncResponse(out error);
 
         private async Task<IAsyncResponse<IServerVersion, IError>> GetServerVersionAsync(string clientName, string protocolMin, string protocolMax)
         {
@@ -560,6 +504,13 @@ namespace ElectrumClient
             if (serverVersion.IsError || serverVersion.Result == null) return;
             ServerVersion = serverVersion.Result.SoftwareVersion;
             ProtocolVersion = serverVersion.Result.ProtocolVersion;
+        }
+
+        private async Task GetFeaturesAsync()
+        {
+            var features = await GetServerFeaturesAsync();
+            if (features.IsError || features.Result == null) return;
+            _scriptHashFunction = HashFunctionFactory.GetHashFunction(features.Result.HashFunction, true);
         }
 
         private static async Task Reader(Client client, CancellationToken ct)

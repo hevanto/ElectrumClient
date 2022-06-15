@@ -1,10 +1,12 @@
-﻿namespace ElectrumClient.Request
+﻿using ElectrumClient.Hashing;
+
+namespace ElectrumClient.Request
 {
     internal class BlockChainScriptHashGetMempoolRequest : RequestBase
     {
         private static readonly string METHOD = "blockchain.scripthash.get_mempool";
-        internal BlockChainScriptHashGetMempoolRequest(string scriptHash)
-            : base(METHOD, scriptHash)
+        internal BlockChainScriptHashGetMempoolRequest(IHash scriptHash)
+            : base(METHOD, scriptHash.ToScriptHashString())
         {
         }
     }

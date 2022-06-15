@@ -1,4 +1,5 @@
 ﻿using ElectrumClient.Converters;
+using ElectrumClient.Hashing;
 using NBitcoin;
 using Newtonsoft.Json;
 
@@ -11,7 +12,7 @@ namespace ElectrumClient.Response
     public interface IUnspentOutput
     {
         public long Height { get; }
-        public string TxHash { get; }
+        public IHash TxHash { get; }
         public long TxPos { get; }
         public Money Value { get; }
     }
@@ -43,10 +44,13 @@ namespace ElectrumClient.Response
         [JsonConverter(typeof(MoneyConverterSats))]
         public Money _value;
 
+        [JsonProperty("tx_hash")]
+        public Hash _txHash;
+
         public UnspentOutput()
         {
             _value = Money.Zero;
-            TxHash = "";
+            _txHash = "";
         }
 
         
@@ -54,8 +58,7 @@ namespace ElectrumClient.Response
         [JsonProperty("height")]
         public long Height { get; set; }
 
-        [JsonProperty("tx_hash")]
-        public string TxHash { get; set; }
+        public IHash TxHash { get { return _txHash; } }
 
         [JsonProperty("tx_pos")]
         public long TxPos { get; set; }

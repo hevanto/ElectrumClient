@@ -1,10 +1,12 @@
-﻿namespace ElectrumClient.Request
+﻿using ElectrumClient.Hashing;
+
+namespace ElectrumClient.Request
 {
     internal class BlockChainScriptHashSubscribeRequest : RequestBase
     {
         private static readonly string METHOD = "blockchain.scripthash.subscribe";
-        internal BlockChainScriptHashSubscribeRequest(string scriptHash)
-            : base (METHOD, scriptHash)
+        internal BlockChainScriptHashSubscribeRequest(IHash scriptHash)
+            : base (METHOD, scriptHash.ToScriptHashString())
         {
         }
     }

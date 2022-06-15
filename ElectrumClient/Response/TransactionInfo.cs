@@ -1,4 +1,5 @@
 ﻿using ElectrumClient.Converters;
+using ElectrumClient.Hashing;
 using NBitcoin;
 using Newtonsoft.Json;
 
@@ -12,7 +13,7 @@ namespace ElectrumClient.Response
     public interface ITransactionInfo
     {
         public long Height { get; }
-        public string TxHash { get; }
+        public IHash TxHash { get; }
         public Money Fee { get; }
         public IList<string> Merkle { get; }
     }
@@ -47,19 +48,22 @@ namespace ElectrumClient.Response
         [JsonProperty("merkle")]
         private List<string> _merkle;
 
+        [JsonProperty("tx_hash")]
+        private Hash _txHash;
+
         public TransactionInfo()
         {
             _fee = Money.Zero;
             _merkle = new List<string>();
-            TxHash = "";
+            _txHash = "";
         }
 
 
         [JsonProperty("height")]
         public long Height { get; set; }
 
-        [JsonProperty("tx_hash")]
-        public string TxHash { get; set; }
+        
+        public IHash TxHash { get { return _txHash; } }
 
         public Money Fee {
             get { return _fee; }
@@ -87,7 +91,7 @@ namespace ElectrumClient.Response
     public interface IMempoolTransactionInfo
     {
         public long Height { get; }
-        public string TxHash { get; }
+        public IHash TxHash { get; }
         public Money Fee { get; }
     }
 
@@ -118,18 +122,21 @@ namespace ElectrumClient.Response
         [JsonConverter(typeof(MoneyConverterSats))]
         private Money _fee;
 
+        [JsonProperty("tx_hash")]
+        private Hash _txHash;
+
         public MempoolTransactionInfo()
         {
             _fee = Money.Zero;
-            TxHash = "";
+            _txHash = "";
         }
 
 
         [JsonProperty("height")]
         public long Height { get; set; }
 
-        [JsonProperty("tx_hash")]
-        public string TxHash { get; set; }
+        
+        public IHash TxHash { get { return _txHash; } }
 
         public Money Fee { get { return _fee; } }
     }

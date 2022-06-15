@@ -17,8 +17,10 @@ namespace ElectrumClient.Converters
             if (reader.TokenType == JsonToken.String)
             {
                 var value = (string)reader.Value;
-                value = value.Substring(value.IndexOf(':')+1).Trim();
+                var colonIndex = value.IndexOf(':');
+                if (colonIndex == -1) return new Error.ErrorResult(value);
 
+                value = value.Substring(colonIndex+1).Trim();
                 return JsonConvert.DeserializeObject<Error.ErrorResult>(value) ?? new Error.ErrorResult();
             }
             throw new JsonSerializationException("Cannoe convert value to error json");

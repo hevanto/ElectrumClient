@@ -1,12 +1,13 @@
-﻿using Newtonsoft.Json;
+﻿using ElectrumClient.Hashing;
+using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
     public interface IBlockHeader
     {
-        public IList<string> Branch { get; }
-        public string Header { get; }
-        public string Root { get; }
+        public IList<IHash> Branch { get; }
+        public IHex Header { get; }
+        public IHash Root { get; }
     }
 
     internal class BlockHeader : ResponseBase, IBlockHeader
@@ -19,9 +20,18 @@ namespace ElectrumClient.Response
         [JsonProperty("result")]
         internal BlockHeaderResult Result { get; set; }
 
-        public IList<string> Branch { get { return Result.Branch; } }
-        public string Header { get { return Result.Header; } }
-        public string Root { get { return Result.Root; } }
+        public IList<IHash> Branch
+        {
+            get
+            {
+                var list = new List<IHash>();
+                foreach (var elem in Result.Branch)
+                    list.Add(elem);
+                return list;
+            }
+        }
+        public IHex Header { get { return Result.Header; } }
+        public IHash Root { get { return Result.Root; } }
 
         internal class BlockHeaderResult
         {
@@ -31,7 +41,7 @@ namespace ElectrumClient.Response
 
             internal BlockHeaderResult(string value)
             {
-                Branch = new List<string>();
+                Branch = new List<Hash>();
                 Header = value;
                 Root = "";
             }
@@ -43,13 +53,13 @@ namespace ElectrumClient.Response
             
 
             [JsonProperty("branch")]
-            public List<string> Branch { get; set; }
+            public List<Hash> Branch { get; set; }
 
             [JsonProperty("header")]
-            public string Header { get; set; }
+            public Hex Header { get; set; }
 
             [JsonProperty("root")]
-            public string Root { get; set; }
+            public Hash Root { get; set; }
         }
     }
 }
