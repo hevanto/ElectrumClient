@@ -11,6 +11,7 @@
     <PackageTags>bitcoin;electrum</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
 	<VersionPrefix>1.0.1</VersionPrefix>
+	<VersionSuffix>alpha</VersionSuffix>
   </PropertyGroup>
 
   <ItemGroup>

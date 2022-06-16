@@ -12,20 +12,7 @@ namespace ElectrumClient
 {
     public class Client : IDisposable
     {
-        public const string DEFAULT_TETNET_HOST = "electrum2.cipig.net";
-        public const int DEFAULT_TESTNET_PORT = 20068;
-        public const bool DEFAULT_TESTNET_USESSL = true;
-
-        public const string DEFAULT_MAINNET_HOST = "electrum2.cipig.net";
-        public const int DEFAULT_MAINNET_PORT = 20000;
-        public const bool DEFAULT_MAINNET_USESSL = true;
-
-        private const string DONATION_ADDRESS = "bc1qg5vc0kn4997l2x8m3vnjgmekca49y8va55pje7";
-
         private static readonly int BUFFERSIZE = 32;
-        private static readonly string CLIENT = "Hevanto ElectrumClient 1.0";
-        private static readonly string PROTO_MIN = "1.4";
-        private static readonly string PROTO_MAX = "1.4";
 
         public event EventHandler<ITip>? NewTip;
         public event EventHandler<IScriptHashStatus>? NewScriptHashStatus;
@@ -35,6 +22,8 @@ namespace ElectrumClient
 
         public string ServerVersion { get; private set; }
         public string ProtocolVersion { get; private set; }
+
+        private string _clientIdentifier;
 
         private string _host;
         private int _port;
@@ -46,7 +35,6 @@ namespace ElectrumClient
         private CancellationTokenSource _cancelSource;
 
         private BitSize _scriptHashBitSize;
-        //private IHashFunction _scriptHashFunction;
 
         private int _msgIdCntr;
 
@@ -54,29 +42,46 @@ namespace ElectrumClient
         private ConcurrentDictionary<string, int> _scriptHashSubscriptionIndex;
 
         public static async Task<Client> ConnectToTestnet(
-            string host = DEFAULT_TETNET_HOST,
-            int port = DEFAULT_TESTNET_PORT,
-            bool useSSL = DEFAULT_TESTNET_USESSL)
+            string host = "",
+            int port = 0,
+            bool useSSL = false)
         {
+            if (host == "")
+            {
+                host = Resources.TestnetHost;
+                port = Resources.TestnetPort;
+                useSSL = Resources.TestnetSSL;
+            }
             var clnt = new Client(host, port, useSSL);
             await clnt.ConnectAsync();
             return clnt;
         }
 
         public static async Task<Client> ConnectToMainnet(
-            string host = DEFAULT_MAINNET_HOST,
-            int port = DEFAULT_MAINNET_PORT,
-            bool useSSL = DEFAULT_MAINNET_USESSL)
+            string host = "",
+            int port = 0,
+            bool useSSL = false)
         {
+            if (host == "")
+            {
+                host = Resources.MainnetHost;
+                port = Resources.MainnetPort;
+                useSSL = Resources.MainnetSSL;
+            }
             var clnt = new Client(host, port, useSSL);
             await clnt.ConnectAsync();
             return clnt;
         }
 
-        public Client(string host, int port, bool useSSL)
+        public Client(string host, int port, bool useSSL, string clientIdentifier = "")
         {
+            Console.WriteLine("Name: {0}", Resources.Name);
+            Console.WriteLine("Version: {0}", Resources.Version);
+
             ServerVersion = "";
             ProtocolVersion = "";
+
+            _clientIdentifier = clientIdentifier;
 
             _host = host;
             _port = port;
@@ -105,6 +110,29 @@ namespace ElectrumClient
         public int TimeoutMs { get; set; }
 
         public int KeepAliveIntervalMs { get; set; }
+
+        public string ClientIdentifier
+        {
+            get
+            {
+                if (_clientIdentifier == "")
+                {
+                    var company = Resources.Company;
+                    var name = Resources.Name;
+                    var version = Resources.Version;
+
+                    _clientIdentifier += company + " " + name + " v" + version;
+                }
+                return _clientIdentifier;
+            }
+        }
+
+        public string Host { get { return _host; } }
+        public int Port { get { return _port;  } }
+        public bool SSL { get { return _useSSL;  } }
+        public string Version {  get { return Resources.Version;  } }
+        public string ProtocolMin { get { return Resources.ProtocolMin; } }
+        public string ProtocolMax { get { return Resources.ProtocolMax; } }
 
         public async Task<bool> ConnectAsync()
         {
@@ -376,11 +404,11 @@ namespace ElectrumClient
             return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.Value : null, resp.ErrorValue);
         }
 
-        public string GetServerDonationAddress(out IError? error) => GetServerDonationAddressAsync().Result.ToSyncResponse(out error) ?? DONATION_ADDRESS;
+        public string GetServerDonationAddress(out IError? error) => GetServerDonationAddressAsync().Result.ToSyncResponse(out error) ?? Resources.DonationAddress;
 
         public string GetClientDonationAddress()
         {
-            return DONATION_ADDRESS;
+            return Resources.DonationAddress;
         }
 
         public async Task<IAsyncResponse<IServerFeatures, IError>> GetServerFeaturesAsync()
@@ -503,7 +531,7 @@ namespace ElectrumClient
 
         private async Task NegotiateProtocolAsync()
         {
-            var serverVersion = await GetServerVersionAsync(CLIENT, PROTO_MIN, PROTO_MAX);
+            var serverVersion = await GetServerVersionAsync(ClientIdentifier, ProtocolMin, ProtocolMax);
             if (serverVersion.IsError || serverVersion.Result == null) return;
             ServerVersion = serverVersion.Result.SoftwareVersion;
             ProtocolVersion = serverVersion.Result.ProtocolVersion;

@@ -59,5 +59,86 @@ namespace ElectrumClient.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to bc1qg5vc0kn4997l2x8m3vnjgmekca49y8va55pje7.
+        /// </summary>
+        internal static string DonationAddress {
+            get {
+                return ResourceManager.GetString("DonationAddress", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to electrum2.cipig.net.
+        /// </summary>
+        internal static string MainnetHost {
+            get {
+                return ResourceManager.GetString("MainnetHost", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 20000.
+        /// </summary>
+        internal static string MainnetPort {
+            get {
+                return ResourceManager.GetString("MainnetPort", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to true.
+        /// </summary>
+        internal static string MainnetSSL {
+            get {
+                return ResourceManager.GetString("MainnetSSL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 1.4.
+        /// </summary>
+        internal static string ProtocolMax {
+            get {
+                return ResourceManager.GetString("ProtocolMax", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 1.4.
+        /// </summary>
+        internal static string ProtocolMin {
+            get {
+                return ResourceManager.GetString("ProtocolMin", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to electrum2.cipig.net.
+        /// </summary>
+        internal static string TestnetHost {
+            get {
+                return ResourceManager.GetString("TestnetHost", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 20068.
+        /// </summary>
+        internal static string TestnetPort {
+            get {
+                return ResourceManager.GetString("TestnetPort", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to true.
+        /// </summary>
+        internal static string TestnetSSL {
+            get {
+                return ResourceManager.GetString("TestnetSSL", resourceCulture);
+            }
+        }
     }
 }
