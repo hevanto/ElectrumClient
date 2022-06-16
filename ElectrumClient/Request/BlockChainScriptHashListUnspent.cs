@@ -1,12 +1,10 @@
-﻿using ElectrumClient.Hashing;
-
-namespace ElectrumClient.Request
+﻿namespace ElectrumClient.Request
 {
     internal class BlockChainScriptHashListUnspent : RequestBase
     {
         private static readonly string METHOD = "blockchain.scripthash.listunspent";
         internal BlockChainScriptHashListUnspent(IHash scriptHash)
-            : base(METHOD, scriptHash.ToScriptHashString())
+            : base(METHOD, scriptHash.ToString())
         {
         }
     }

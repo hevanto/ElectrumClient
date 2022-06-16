@@ -1,12 +1,10 @@
-﻿using ElectrumClient.Hashing;
-
-namespace ElectrumClient.Request
+﻿namespace ElectrumClient.Request
 {
     internal class BlockChainScriptHashUnsubscribeRequest : RequestBase
     {
         private static readonly string METHOD = "blockchain.scripthash.unsubscribe";
         internal BlockChainScriptHashUnsubscribeRequest(IHash scriptHash)
-            : base(METHOD, scriptHash.ToScriptHashString())
+            : base(METHOD, scriptHash.ToString())
         {
         }
     }

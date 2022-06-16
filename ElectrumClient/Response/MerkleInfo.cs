@@ -6,7 +6,7 @@ namespace ElectrumClient.Response
     public interface IMerkleInfo
     {
         public long BlockHeight { get; }
-        public IList<IHash> Merkle { get; }
+        public IList<Hash<BitSize256>> Merkle { get; }
         public long Pos { get; }
     }
 
@@ -21,13 +21,13 @@ namespace ElectrumClient.Response
         internal MerkleInfoResult Result { get; set; }
 
         public long BlockHeight { get { return Result.BlockHeight; } }
-        public IList<IHash> Merkle
+        public IList<Hash<BitSize256>> Merkle
         {
             get
             {
-                var lst = new List<IHash>();
+                var lst = new List<Hash<BitSize256>>();
                 foreach (var item in Result.Merkle)
-                    lst.Add(item);
+                    lst.Add(HashFactory.Create256(item));
                 return lst;
             }
         }
@@ -37,14 +37,14 @@ namespace ElectrumClient.Response
         {
             internal MerkleInfoResult()
             {
-                Merkle = new List<Hash>();
+                Merkle = new List<string>();
             }
 
             [JsonProperty("block_height")]
             public long BlockHeight { get; set; }
 
             [JsonProperty("merkle")]
-            public List<Hash> Merkle { get; set; }
+            public List<string> Merkle { get; set; }
 
             [JsonProperty("pos")]
             public long Pos { get; set; }

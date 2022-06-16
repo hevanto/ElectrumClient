@@ -1,6 +1,4 @@
-﻿using ElectrumClient.Hashing;
-
-namespace ElectrumClient.Request
+﻿namespace ElectrumClient.Request
 {
     internal class BlockChainTransactionGetMerkleRequest : RequestBase
     {

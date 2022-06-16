@@ -6,30 +6,33 @@ namespace ElectrumClient.Response
     public interface IScriptHashStatus
     {
         public IHash ScriptHash { get; }
-        public IHash Hash { get; }
+        public Hash<BitSize256> Hash { get; }
     }
 
-    internal class ScriptHashStatus : ResponseBase, IScriptHashStatus
+    internal class ScriptHashStatus<BS> : ResponseBase, IScriptHashStatus
+        where BS : IBitSize, new()
     {
         public ScriptHashStatus()
         {
             Result = new StatusResult();
         }
 
+        public ScriptHashStatus(BS BitSize) : this() { }
+
         [JsonProperty("result")]
         internal StatusResult Result { get; set; }
 
         public IHash ScriptHash {
-            get { return Result.ScriptHash; }
-            set { Result.ScriptHash = new Hash(value.Hex, true); }
+            get { return new HexString(Result.ScriptHash).Hash ?? new Hash<BS>(); }
+            set { Result.ScriptHash = value.ToString(); }
         }
 
-        public IHash Hash {  get { return Result.Hash; } }
+        public Hash<BitSize256> Hash {  get { return HashFactory.Create256(Result.Hash); } }
 
-        internal static ScriptHashStatus FromJson(string? scriptHash, string json)
+        internal static ScriptHashStatus<BS> FromJson(string? scriptHash, string json)
         {
-            var status = JsonConvert.DeserializeObject<ScriptHashStatus>(json) ?? new ScriptHashStatus();
-            if (scriptHash != null) status.Result.ScriptHash = new Hash((IHex)new Hex(scriptHash), true);
+            var status = JsonConvert.DeserializeObject<ScriptHashStatus<BS>>(json) ?? new ScriptHashStatus<BS>();
+            if (scriptHash != null) status.Result.ScriptHash = scriptHash;
             return status;
         }
 
@@ -53,8 +56,8 @@ namespace ElectrumClient.Response
 
             internal StatusResult(string scriptHash, string hash)
             {
-                ScriptHash = new Hash((IHex)new Hex(scriptHash), true);
-                Hash = new Hash((IHex)new Hex(hash));
+                ScriptHash = scriptHash;
+                Hash = hash;
             }
 
             public static implicit operator StatusResult(string hash)
@@ -62,8 +65,8 @@ namespace ElectrumClient.Response
                 return new StatusResult(hash);
             }
 
-            public Hash ScriptHash { get; set;  }
-            public Hash Hash { get; set; }
+            public string ScriptHash { get; set;  }
+            public string Hash { get; set; }
         }
     }
 }

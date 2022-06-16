@@ -5,7 +5,7 @@ namespace ElectrumClient.Response
     public interface ITip
     {
         public long Height { get; }
-        public string Hex { get; }
+        public IHexString Hex { get; }
     }
 
     internal class Tip : ResponseBase, ITip
@@ -23,7 +23,7 @@ namespace ElectrumClient.Response
         internal TipResult Result { get; set; }
 
         public long Height {  get {  return Result.Height; } }
-        public string Hex { get { return Result.Hex; } }
+        public IHexString Hex { get { return new HexString(Result.Hex); } }
 
         public static implicit operator Tip(TipResult result)
         {

@@ -5,6 +5,7 @@ namespace ElectrumClient.Response
 {
     public interface IError
     {
+        public string Description { get; }
         public int Code { get; }
         public string Message { get; }
     }
@@ -15,10 +16,19 @@ namespace ElectrumClient.Response
             Result = new ErrorResult();
         }
 
+        public override string ToString()
+        {
+            if (Message != "")
+                return $"{Description} [{Code} - {Message}]";
+            else
+                return $"{Description}";
+        }
+
         [JsonProperty("error")]
         [JsonConverter(typeof(EmbeddedErrorConverter))]
         internal ErrorResult Result { get; set; }
 
+        public string Description { get { return Result.Description; } }
         public int Code { get { return Result.Code; } }
         public string Message { get { return Result.Message; } }
 
@@ -26,15 +36,19 @@ namespace ElectrumClient.Response
         {
             internal ErrorResult()
             {
+                Description = "";
                 Code = 0;
                 Message = "";
             }
 
-            internal ErrorResult(string message)
+            internal ErrorResult(string description)
             {
+                Description = description;
                 Code = 0;
-                Message = message;
+                Message = "";
             }
+
+            public string Description { get; set; }
 
             [JsonProperty("code")]
             public int Code { get; set; }

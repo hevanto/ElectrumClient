@@ -9,16 +9,12 @@ namespace ElectrumClient.Hashing
 {
     internal abstract class AbstractHashFunction : IHashFunction
     {
-        protected bool _reverseBytes;
-
-        public AbstractHashFunction(bool reverseBytes)
+        public AbstractHashFunction()
         {
-            _reverseBytes = reverseBytes;
         }
 
+        public abstract IBitSize BitSize { get; }
+
         public abstract IHash Hash(byte[] data);
-        public IHash Hash(Script script) => Hash(script.ToBytes());
-        public IHex HashHex(byte[] data) => Hash(data).Hex;
-        public IHex HashHex(Script script) => Hash(script).Hex;
     }
 }

@@ -1,12 +1,10 @@
-﻿using ElectrumClient.Hashing;
-
-namespace ElectrumClient.Request
+﻿namespace ElectrumClient.Request
 {
     internal class BlockChainScriptHashGetHistoryRequest : RequestBase
     {
         private static readonly string METHOD = "blockchain.scripthash.get_history";
         internal BlockChainScriptHashGetHistoryRequest(IHash scriptHash)
-            : base(METHOD, scriptHash.ToScriptHashString())
+            : base(METHOD, scriptHash.ToString())
         {
         }
     }

@@ -13,7 +13,7 @@ namespace ElectrumClient.Response
     public interface ITransactionInfo
     {
         public long Height { get; }
-        public IHash TxHash { get; }
+        public Hash<BitSize256> TxHash { get; }
         public Money Fee { get; }
         public IList<string> Merkle { get; }
     }
@@ -43,13 +43,13 @@ namespace ElectrumClient.Response
     {
         [JsonProperty("fee")]
         [JsonConverter(typeof(MoneyConverterSats))]
-        private Money _fee;
+        internal Money _fee;
 
         [JsonProperty("merkle")]
-        private List<string> _merkle;
+        internal List<string> _merkle;
 
         [JsonProperty("tx_hash")]
-        private Hash _txHash;
+        internal string _txHash;
 
         public TransactionInfo()
         {
@@ -63,7 +63,7 @@ namespace ElectrumClient.Response
         public long Height { get; set; }
 
         
-        public IHash TxHash { get { return _txHash; } }
+        public Hash<BitSize256> TxHash { get { return HashFactory.Create256(_txHash); } }
 
         public Money Fee {
             get { return _fee; }
@@ -91,7 +91,7 @@ namespace ElectrumClient.Response
     public interface IMempoolTransactionInfo
     {
         public long Height { get; }
-        public IHash TxHash { get; }
+        public Hash<BitSize256> TxHash { get; }
         public Money Fee { get; }
     }
 
@@ -120,10 +120,10 @@ namespace ElectrumClient.Response
     {
         [JsonProperty("fee")]
         [JsonConverter(typeof(MoneyConverterSats))]
-        private Money _fee;
+        internal Money _fee;
 
         [JsonProperty("tx_hash")]
-        private Hash _txHash;
+        internal string _txHash;
 
         public MempoolTransactionInfo()
         {
@@ -136,7 +136,7 @@ namespace ElectrumClient.Response
         public long Height { get; set; }
 
         
-        public IHash TxHash { get { return _txHash; } }
+        public Hash<BitSize256> TxHash { get { return HashFactory.Create256(_txHash); } }
 
         public Money Fee { get { return _fee; } }
     }

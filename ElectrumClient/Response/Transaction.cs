@@ -6,20 +6,21 @@ using Newtonsoft.Json.Converters;
 
 namespace ElectrumClient.Response
 {
-    public class BroadcastTransaction { }
-    public class OnChainTransaction { }
+    public interface ITransactionKind { }
+    public class BroadcastTransaction : ITransactionKind { }
+    public class OnChainTransaction : ITransactionKind { }
 
     public interface ITransaction
     {
-        public IHash? BlockHash { get; }
+        public Hash<BitSize256>? BlockHash { get; }
         public DateTime? BlockTime { get; }
         public long? Confirmations { get; }
-        public IHash? Hash { get; }
-        public IHex? Hex { get; }
+        public Hash<BitSize256>? Hash { get; }
+        public IHexString? Hex { get; }
         public long? LockTime { get; }
         public long? Size { get; }
         public DateTime? Time { get; }
-        public IHash? TxId { get; }
+        public Hash<BitSize256>? TxId { get; }
         public long? Version { get; }
         public IList<IVin>? Vin { get; }
         public IList<IVout>? Vout { get; }
@@ -30,13 +31,13 @@ namespace ElectrumClient.Response
     {
         public IScriptSig ScriptSig { get; }
         public long Sequence { get; }
-        public IHash TxId { get; }
+        public Hash<BitSize256> TxId { get; }
         public long Vout { get; }
     }
     public interface IScriptSig
     {
         public string Asm { get; }
-        public IHex Hex { get; }
+        public IHexString Hex { get; }
     }
     public interface IVout
     {
@@ -49,12 +50,13 @@ namespace ElectrumClient.Response
     {
         public IList<string> Addresses { get; }
         public string Asm { get; }
-        public IHex Hex { get; }
+        public IHexString Hex { get; }
         public long ReqSigs { get; }
         public string Type { get; }
     }
 
     internal class Transaction<T> : ResponseBase, ITransaction
+        where T : ITransactionKind
     {
         public Transaction()
         {
@@ -64,15 +66,15 @@ namespace ElectrumClient.Response
         [JsonProperty("result")]
         internal TransactionResult Result { get; set; }
 
-        public IHash? BlockHash { get { return Result.BlockHash; } }
+        public Hash<BitSize256>? BlockHash { get { return Result.BlockHash; } }
         public DateTime? BlockTime { get { return Result.BlockTime; } }
         public long? Confirmations { get { return Result.Confirmations; } }
-        public IHash? Hash { get { return Result.Hash; } }
-        public IHex? Hex { get { return Result.Hex; } }
+        public Hash<BitSize256>? Hash { get { return Result.Hash; } }
+        public IHexString? Hex { get { return Result.Hex; } }
         public long? LockTime { get { return Result.LockTime; } }
         public long? Size { get { return Result.Size; } }
         public DateTime? Time { get { return Result.Time; } }
-        public IHash? TxId { get { return Result.TxId; } }
+        public Hash<BitSize256>? TxId { get { return Result.TxId; } }
         public long? Version { get { return Result.Version; } }
         public IList<IVin>? Vin
         {
@@ -104,14 +106,26 @@ namespace ElectrumClient.Response
 
         internal class TransactionResult
         {
+            [JsonProperty("blockhash")]
+            internal string? _blockHash;
+
+            [JsonProperty("hash")]
+            internal string? _hash;
+
+            [JsonProperty("hex")]
+            internal string? _hex;
+
+            [JsonProperty("txid")]
+            internal string? _txId;
+
             internal TransactionResult() : this("", "")
             {
             }
 
             internal TransactionResult(string hash, string hex)
             {
-                Hash = new Hash((IHex)new Hex(hash));
-                Hex = new Hex(hex);
+                _hash = hash;
+                _hex = hex;
             }
 
             public static implicit operator TransactionResult(string txResult)
@@ -122,8 +136,15 @@ namespace ElectrumClient.Response
                 return new TransactionResult("", txResult);
             }
 
-            [JsonProperty("blockhash")]
-            public Hash? BlockHash { get; set; }
+            
+            public Hash<BitSize256>? BlockHash
+            {
+                get
+                {
+                    if (_blockHash == null) return null;
+                    return HashFactory.Create256(_blockHash);
+                }
+            }
 
             [JsonProperty("blocktime")]
             [JsonConverter(typeof(UnixDateTimeConverter))]
@@ -132,11 +153,24 @@ namespace ElectrumClient.Response
             [JsonProperty("confirmations")]
             public long? Confirmations { get; set; }
 
-            [JsonProperty("hash")]
-            public Hash? Hash { get; set; }
+            
+            public Hash<BitSize256>? Hash
+            { 
+                get
+                {
+                    if (_hash == null) return null;
+                    return HashFactory.Create256(_hash);
+                }
+            }
 
-            [JsonProperty("hex")]
-            public Hex? Hex { get; set; }
+            public IHexString? Hex
+            {
+                get
+                {
+                    if (_hex == null) return null;
+                    return new HexString(_hex);
+                }
+            }
 
             [JsonProperty("locktime")]
             public long? LockTime { get; set; }
@@ -148,8 +182,14 @@ namespace ElectrumClient.Response
             [JsonConverter(typeof(UnixDateTimeConverter))]
             public DateTime? Time { get; set; }
 
-            [JsonProperty("txid")]
-            public Hash? TxId { get; set; }
+            public Hash<BitSize256>? TxId
+            { 
+                get
+                {
+                    if (_txId == null) { return null; }
+                    return HashFactory.Create256(_txId);
+                }
+            }
 
             [JsonProperty("version")]
             public long? Version { get; set; }
@@ -164,7 +204,7 @@ namespace ElectrumClient.Response
         internal class VinResult : IVin
         {
             [JsonProperty("txid")]
-            internal Hash _txId;
+            internal string _txId;
 
             internal VinResult()
             {
@@ -183,7 +223,7 @@ namespace ElectrumClient.Response
             [JsonProperty("sequence")]
             public long Sequence { get; set; }
 
-            public IHash TxId { get { return _txId; } }
+            public Hash<BitSize256> TxId { get { return HashFactory.Create256(_txId); } }
 
             [JsonProperty("vout")]
             public long Vout { get; set; }
@@ -195,16 +235,16 @@ namespace ElectrumClient.Response
             internal string _asm;
 
             [JsonProperty("hex")]
-            internal Hex _hex;
+            internal string _hex;
             internal ScriptSigResult()
             {
                 _asm = "";
-                _hex = Hashing.Hex.Empty;
+                _hex = "";
             }
 
             
             public string Asm { get { return _asm; } }
-            public IHex Hex { get { return _hex; } }
+            public IHexString Hex { get { return new HexString(_hex); } }
         }
 
         internal class VoutResult : IVout
@@ -239,28 +279,31 @@ namespace ElectrumClient.Response
         internal class ScriptPubKeyResult : IScriptPubKey
         {
             [JsonProperty("hex")]
-            internal Hex _hex;
+            internal string _hex;
+
+            [JsonProperty("addresses")]
+            internal List<string> _addresses;
 
             internal ScriptPubKeyResult()
             {
-                addresses = new List<string>();
+                _hex = "";
+                _addresses = new List<string>();
+
                 Asm = "";
-                _hex = Hashing.Hex.Empty;
                 Type = "";
             }
 
-            [JsonProperty("addresses")]
-            public List<string> addresses { get; set; }
+            
 
             public IList<string> Addresses
             {
-                get { return addresses; }
+                get { return _addresses; }
             }
 
             [JsonProperty("asm")]
             public string Asm { get; set; }
 
-            public IHex Hex { get { return _hex; } }
+            public IHexString Hex { get { return new HexString(_hex); } }
 
             [JsonProperty("reqSigs")]
             public long ReqSigs { get; set; }

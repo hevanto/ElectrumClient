@@ -6,13 +6,14 @@ namespace ElectrumClient.Response
 {
     public interface IServerFeatures
     {
-        public IHash GenesisHash { get; }
+        public IHexString GenesisHash { get; }
         public IList<IHost> Hosts { get; }
         public string ProtocolMax { get; }
         public string ProtocolMin { get; }
         public long? Pruning { get; }
         public string ServerVersion { get; }
         public string HashFunction { get; }
+        public IBitSize HashSize { get; }
     }
 
     public interface IHost
@@ -32,7 +33,7 @@ namespace ElectrumClient.Response
         [JsonProperty("result")]
         internal ServerFeaturesResult Result { get; set; }
 
-        public IHash GenesisHash { get { return Result.GenesisHash; } }
+        public IHexString GenesisHash { get { return new HexString(Result.GenesisHash); } }
         public IList<IHost> Hosts
         {
             get
@@ -47,6 +48,13 @@ namespace ElectrumClient.Response
         public long? Pruning { get { return Result.Pruning; } }
         public string ServerVersion { get { return Result.ServerVersion; } }
         public string HashFunction { get { return Result.HashFunction; } }
+        public IBitSize HashSize
+        {
+            get
+            {
+                return HashFunctionFactory.GetHashFunctionBitSize(HashFunction);
+            }
+        }
 
         internal class ServerFeaturesResult
         {
@@ -61,7 +69,7 @@ namespace ElectrumClient.Response
             }
 
             [JsonProperty("genesis_hash")]
-            public Hash GenesisHash { get; set;}
+            public string GenesisHash { get; set;}
 
             [JsonProperty("hosts")]
             [JsonConverter(typeof(HostConverter))]

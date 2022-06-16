@@ -20,8 +20,11 @@ namespace ElectrumClient.Converters
                 var colonIndex = value.IndexOf(':');
                 if (colonIndex == -1) return new Error.ErrorResult(value);
 
+                var descr = value.Substring(0, colonIndex).Trim();
                 value = value.Substring(colonIndex+1).Trim();
-                return JsonConvert.DeserializeObject<Error.ErrorResult>(value) ?? new Error.ErrorResult();
+                var err = JsonConvert.DeserializeObject<Error.ErrorResult>(value) ?? new Error.ErrorResult(descr);
+                err.Description = descr;
+                return err;
             }
             throw new JsonSerializationException("Cannoe convert value to error json");
         }

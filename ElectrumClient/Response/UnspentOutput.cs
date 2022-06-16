@@ -12,7 +12,7 @@ namespace ElectrumClient.Response
     public interface IUnspentOutput
     {
         public long Height { get; }
-        public IHash TxHash { get; }
+        public Hash<BitSize256> TxHash { get; }
         public long TxPos { get; }
         public Money Value { get; }
     }
@@ -42,10 +42,10 @@ namespace ElectrumClient.Response
     {
         [JsonProperty("value")]
         [JsonConverter(typeof(MoneyConverterSats))]
-        public Money _value;
+        internal Money _value;
 
         [JsonProperty("tx_hash")]
-        public Hash _txHash;
+        internal string _txHash;
 
         public UnspentOutput()
         {
@@ -58,7 +58,7 @@ namespace ElectrumClient.Response
         [JsonProperty("height")]
         public long Height { get; set; }
 
-        public IHash TxHash { get { return _txHash; } }
+        public Hash<BitSize256> TxHash { get { return HashFactory.Create256(_txHash); } }
 
         [JsonProperty("tx_pos")]
         public long TxPos { get; set; }
