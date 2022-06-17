@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    internal interface IPeerList
+    internal interface IPeerList : IAsyncResponseResult
     {
         IList<IPeer> List { get; }
     }

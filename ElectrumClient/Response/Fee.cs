@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface IFee
+    public interface IFee : IAsyncResponseResult
     {
         public long TargetConfirmation { get; }
         public Money Amount { get;  }

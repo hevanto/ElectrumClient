@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    internal interface IUnspentOutputList
+    internal interface IUnspentOutputList : IAsyncResponseResult
     {
         public IList<IUnspentOutput> List { get; }
     }

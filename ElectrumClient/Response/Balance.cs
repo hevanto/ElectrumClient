@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface IBalance
+    public interface IBalance : IAsyncResponseResult
     {
         public Money Confirmed { get; }
         public Money Unconfirmed { get; }

@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    internal interface ITransactionInfoList
+    internal interface ITransactionInfoList : IAsyncResponseResult
     {
         public IList<ITransactionInfo> List { get; }
     }
@@ -83,7 +83,7 @@ namespace ElectrumClient.Response
         }
     }
 
-    internal interface IMempoolTransationInfoList
+    internal interface IMempoolTransationInfoList : IAsyncResponseResult
     {
         public IList<IMempoolTransactionInfo> List { get; }
     }

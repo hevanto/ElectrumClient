@@ -1,8 +1,9 @@
-﻿using Newtonsoft.Json;
+﻿using NBitcoin;
+using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    internal interface IGenericResponse
+    internal interface IGenericResponse : IAsyncResponseResult
     {
         public string Method { get; }
         public string Error { get; }
@@ -29,10 +30,11 @@ namespace ElectrumClient.Response
 
         public string Raw { get; set; }
 
-        internal static GenericResponse FromJson(string json)
+        internal static GenericResponse FromJson(string json, Network network)
         {
             var resp = JsonConvert.DeserializeObject<GenericResponse>(json) ?? new GenericResponse();
             resp.Raw = json;
+            resp.network = network;
             return resp;
         }
     }

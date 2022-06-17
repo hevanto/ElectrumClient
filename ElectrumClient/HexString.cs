@@ -1,4 +1,5 @@
-﻿using NBitcoin;
+﻿using ElectrumClient.Response;
+using NBitcoin;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ElectrumClient
 {
-    public interface IHexString
+    public interface IHexString : IAsyncResponseResult
     {
         public bool IsEmpty { get; }
         public IBitSize BitSize { get; }
@@ -105,6 +106,12 @@ namespace ElectrumClient
                 bytes[i] = Convert.ToByte(hex.Substring(i*2, 2), 16);
             if (byteOrder != ByteOrder.NetworkByteOrder) bytes = bytes.Reverse().ToArray();
             return bytes;
+        }
+
+        void IAsyncResponseResult.SetNetwork(Network network)
+        {
+            // Nothin to do here
+            return;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace ElectrumClient.Response
     public class BroadcastTransaction : ITransactionKind { }
     public class OnChainTransaction : ITransactionKind { }
 
-    public interface ITransaction
+    public interface ITransaction : IAsyncResponseResult
     {
         public Hash<BitSize256>? BlockHash { get; }
         public DateTime? BlockTime { get; }
@@ -26,6 +26,7 @@ namespace ElectrumClient.Response
         public IList<IVout>? Vout { get; }
 
         Transaction ToTransaction(Network network);
+        IList<Coin> GetCoins(Network network);
     }
     public interface IVin
     {
@@ -102,6 +103,12 @@ namespace ElectrumClient.Response
         public Transaction ToTransaction(Network network)
         {
             return Transaction.Parse(Hex?.ToString(), network);
+        }
+
+        public IList<Coin> GetCoins(Network network)
+        {
+            Transaction tx = ToTransaction(network);
+            return tx.Outputs.AsCoins().ToList();
         }
 
         internal class TransactionResult

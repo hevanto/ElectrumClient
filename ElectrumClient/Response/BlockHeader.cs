@@ -2,7 +2,7 @@
 
 namespace ElectrumClient.Response
 {
-    public interface IBlockHeader
+    public interface IBlockHeader : IAsyncResponseResult
     {
         public IList<Hash<BitSize256>> Branch { get; }
         public IHexString Header { get; }

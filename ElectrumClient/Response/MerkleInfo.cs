@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface IMerkleInfo
+    public interface IMerkleInfo : IAsyncResponseResult
     {
         public long BlockHeight { get; }
         public IList<Hash<BitSize256>> Merkle { get; }

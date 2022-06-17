@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using NBitcoin;
+using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
@@ -65,9 +66,11 @@ namespace ElectrumClient.Response
             }
         }
 
-        internal static TipList FromJson(string json)
+        internal static TipList FromJson(string json, Network network)
         {
-            return JsonConvert.DeserializeObject<TipList>(json) ?? new TipList();
+            var tiplist = JsonConvert.DeserializeObject<TipList>(json) ?? new TipList();
+            tiplist.network = network;
+            return tiplist;
         }
     }
 }

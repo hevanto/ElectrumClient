@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    internal interface IFeeHistogram
+    internal interface IFeeHistogram : IAsyncResponseResult
     {
         public IList<IFeeHistogramPoint> List { get; }
     }

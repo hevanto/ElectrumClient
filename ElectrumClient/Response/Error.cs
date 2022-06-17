@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface IError
+    public interface IError : IAsyncResponseResult
     {
         public string Description { get; }
         public int Code { get; }

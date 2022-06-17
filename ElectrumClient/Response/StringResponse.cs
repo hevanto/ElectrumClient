@@ -2,7 +2,7 @@
 
 namespace ElectrumClient.Response
 {
-    public interface IString
+    public interface IString : IAsyncResponseResult
     {
         public string Value { get; }
     }

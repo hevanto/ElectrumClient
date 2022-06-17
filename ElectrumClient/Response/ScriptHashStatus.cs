@@ -1,9 +1,10 @@
 ﻿using ElectrumClient.Hashing;
+using NBitcoin;
 using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface IScriptHashStatus
+    public interface IScriptHashStatus : IAsyncResponseResult
     {
         public IHash ScriptHash { get; }
         public Hash<BitSize256> Hash { get; }
@@ -29,10 +30,14 @@ namespace ElectrumClient.Response
 
         public Hash<BitSize256> Hash {  get { return HashFactory.Create256(Result.Hash); } }
 
-        internal static ScriptHashStatus<BS> FromJson(string? scriptHash, string json)
+        internal static ScriptHashStatus<BS> FromJson(string? scriptHash, string json, Network network)
         {
             var status = JsonConvert.DeserializeObject<ScriptHashStatus<BS>>(json) ?? new ScriptHashStatus<BS>();
-            if (scriptHash != null) status.Result.ScriptHash = scriptHash;
+            if (scriptHash != null)
+            {
+                status.Result.ScriptHash = scriptHash;
+                status.network = network;
+            }
             return status;
         }
 

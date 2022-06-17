@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface IServerVersion
+    public interface IServerVersion : IAsyncResponseResult
     {
         public string SoftwareVersion { get; }
         public string ProtocolVersion { get; }

@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface IServerFeatures
+    public interface IServerFeatures : IAsyncResponseResult
     {
         public IHexString GenesisHash { get; }
         public IList<IHost> Hosts { get; }
@@ -23,7 +23,7 @@ namespace ElectrumClient.Response
         public long? SslPort { get; }
     }
 
-    internal class ServerFeatures : IServerFeatures
+    internal class ServerFeatures : ResponseBase, IServerFeatures
     {
         public ServerFeatures()
         {

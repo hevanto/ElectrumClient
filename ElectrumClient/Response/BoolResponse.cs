@@ -2,7 +2,7 @@
 
 namespace ElectrumClient.Response
 {
-    public interface IBool
+    public interface IBool : IAsyncResponseResult
     {
         public bool Value { get; }
     }

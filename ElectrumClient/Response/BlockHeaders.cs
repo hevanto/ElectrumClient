@@ -2,7 +2,7 @@
 
 namespace ElectrumClient.Response
 {
-    public interface IBlockHeaders
+    public interface IBlockHeaders : IAsyncResponseResult
     {
         public IList<IHexString> Headers { get; }
         public long Max { get; }
