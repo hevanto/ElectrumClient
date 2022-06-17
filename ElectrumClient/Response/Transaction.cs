@@ -25,8 +25,8 @@ namespace ElectrumClient.Response
         public IList<IVin>? Vin { get; }
         public IList<IVout>? Vout { get; }
 
-        Transaction ToTransaction(Network network);
-        IList<Coin> GetCoins(Network network);
+        Transaction ToTransaction();
+        IList<Coin> GetCoins();
     }
     public interface IVin
     {
@@ -100,14 +100,14 @@ namespace ElectrumClient.Response
             }
         }
 
-        public Transaction ToTransaction(Network network)
+        public Transaction ToTransaction()
         {
-            return Transaction.Parse(Hex?.ToString(), network);
+            return Transaction.Parse(Hex?.ToString(), ((IAsyncResponseResult)this).Network);
         }
 
-        public IList<Coin> GetCoins(Network network)
+        public IList<Coin> GetCoins()
         {
-            Transaction tx = ToTransaction(network);
+            Transaction tx = ToTransaction();
             return tx.Outputs.AsCoins().ToList();
         }
 

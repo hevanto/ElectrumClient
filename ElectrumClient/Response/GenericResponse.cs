@@ -34,7 +34,7 @@ namespace ElectrumClient.Response
         {
             var resp = JsonConvert.DeserializeObject<GenericResponse>(json) ?? new GenericResponse();
             resp.Raw = json;
-            resp.network = network;
+            ((IAsyncResponseResult)resp).SetNetwork(network);
             return resp;
         }
     }

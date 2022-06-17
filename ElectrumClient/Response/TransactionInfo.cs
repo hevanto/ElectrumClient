@@ -10,7 +10,7 @@ namespace ElectrumClient.Response
         public IList<ITransactionInfo> List { get; }
     }
 
-    public interface ITransactionInfo
+    public interface ITransactionInfo : IAsyncResponseResult
     {
         public long Height { get; }
         public Hash<BitSize256> TxHash { get; }
@@ -33,13 +33,17 @@ namespace ElectrumClient.Response
             get
             {
                 var list = new List<ITransactionInfo>();
-                foreach (var item in Result) list.Add(item);
+                foreach (var item in Result)
+                {
+                    ((IAsyncResponseResult)item).SetNetwork(((IAsyncResponseResult)this).Network);
+                    list.Add(item);
+                }
                 return list;
             }
         }
     }
-    
-    internal class TransactionInfo : ITransactionInfo
+
+    internal class TransactionInfo : ResponseBase, ITransactionInfo
     {
         [JsonProperty("fee")]
         [JsonConverter(typeof(MoneyConverterSats))]
@@ -56,13 +60,14 @@ namespace ElectrumClient.Response
             _fee = Money.Zero;
             _merkle = new List<string>();
             _txHash = "";
+            _network = Network.TestNet; // Safe default
         }
 
 
         [JsonProperty("height")]
         public long Height { get; set; }
 
-        
+
         public Hash<BitSize256> TxHash { get { return HashFactory.Create256(_txHash); } }
 
         public Money Fee {
@@ -88,7 +93,7 @@ namespace ElectrumClient.Response
         public IList<IMempoolTransactionInfo> List { get; }
     }
 
-    public interface IMempoolTransactionInfo
+    public interface IMempoolTransactionInfo : IAsyncResponseResult
     {
         public long Height { get; }
         public Hash<BitSize256> TxHash { get; }
@@ -110,7 +115,11 @@ namespace ElectrumClient.Response
             get
             {
                 var list = new List<IMempoolTransactionInfo>();
-                foreach (var item in Result) list.Add(item);
+                foreach (var item in Result)
+                {
+                    ((IAsyncResponseResult)item).SetNetwork(((IAsyncResponseResult)this).Network);
+                    list.Add(item);
+                }
                 return list;
             }
         }
@@ -129,8 +138,8 @@ namespace ElectrumClient.Response
         {
             _fee = Money.Zero;
             _txHash = "";
+            _network = Network.TestNet; // Safe default;
         }
-
 
         [JsonProperty("height")]
         public long Height { get; set; }

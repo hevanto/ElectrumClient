@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {
-    public interface ITip
+    public interface ITip : IAsyncResponseResult
     {
         public long Height { get; }
         public IHexString Hex { get; }
@@ -66,10 +66,25 @@ namespace ElectrumClient.Response
             }
         }
 
+        public IList<ITip> List
+        {
+            get
+            {
+                var list = new List<ITip>();
+                foreach (var item in Result)
+                {
+                    Tip tip = new Tip(item);
+                    ((IAsyncResponseResult)tip).SetNetwork(((IAsyncResponseResult)this).Network);
+                    list.Add(tip);
+                }
+                return list;
+            }
+        }
+
         internal static TipList FromJson(string json, Network network)
         {
             var tiplist = JsonConvert.DeserializeObject<TipList>(json) ?? new TipList();
-            tiplist.network = network;
+            ((IAsyncResponseResult)tiplist).SetNetwork(network);
             return tiplist;
         }
     }

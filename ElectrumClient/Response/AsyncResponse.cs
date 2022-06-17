@@ -5,6 +5,7 @@ namespace ElectrumClient.Response
 {
     public interface IAsyncResponseResult
     {
+        public Network Network { get; }
         internal void SetNetwork(Network network);
     }
     public interface IAsyncResponse<IR,IE>
@@ -54,7 +55,7 @@ namespace ElectrumClient.Response
 
         public void UnmarshallResult(string json, Network network)
         {
-            R? _result = JsonConvert.DeserializeObject<R>(json);
+            _result = JsonConvert.DeserializeObject<R>(json);
             if (_result != null)
             {
                 Type rType = typeof(R);

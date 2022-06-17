@@ -24,21 +24,9 @@ namespace ElectrumClient
         public string ProtocolVersion { get; private set; }
 
         private string _clientIdentifier;
-
-        private string _host;
-        private int _port;
-        private bool _useSSL;
-        private Network _network;
-
-        private TcpClient? _tcpClient;
-        private SslStream? _sslStream;
-        private Stream? _stream;
-        private Mutex _writeMutex = new Mutex();
-
+        private HostConnection _conn;
         private CancellationTokenSource _cancelSource;
-
         private BitSize _scriptHashBitSize;
-
         private int _msgIdCntr;
 
         private ConcurrentDictionary<int, string> _scriptHashSubscription;
@@ -86,10 +74,7 @@ namespace ElectrumClient
 
             _clientIdentifier = clientIdentifier;
 
-            _host = host;
-            _port = port;
-            _useSSL = useSSL;
-            _network = network;
+            _conn = new HostConnection(host, port, useSSL, network);
 
             TimeoutMs = 30000;
             KeepAliveIntervalMs = 30000;
@@ -109,7 +94,7 @@ namespace ElectrumClient
             _scriptHashBitSize = HashFunctionFactory.GetHashFunctionBitSize();
         }
 
-        public bool Connected { get { return _tcpClient != null ? _tcpClient.Connected : false; } }
+        public bool Connected => _conn.Connected;
 
         public int TimeoutMs { get; set; }
 
@@ -131,28 +116,18 @@ namespace ElectrumClient
             }
         }
 
-        public string Host { get { return _host; } }
-        public int Port { get { return _port;  } }
-        public bool SSL { get { return _useSSL;  } }
-        public Network Network { get { return _network; } }
+        public string Host => _conn.Host;
+        public int Port => _conn.Port;
+        public bool SSL => _conn.UseSSL;
+        public Network Network => _conn.Network;
         public string Version {  get { return Resources.Version;  } }
         public string ProtocolMin { get { return Resources.ProtocolMin; } }
         public string ProtocolMax { get { return Resources.ProtocolMax; } }
 
         public async Task<bool> ConnectAsync()
         {
-            _tcpClient = new TcpClient();
-            await _tcpClient.ConnectAsync(_host, _port);
-            if (!_tcpClient.Connected) { return false; }
-
-            if (_useSSL)
-            {
-                var _sslsTream = new SslStream(_tcpClient.GetStream(), true, new RemoteCertificateValidationCallback(CertificateValidationCallback));
-                await _sslsTream.AuthenticateAsClientAsync(_host);
-                _stream = Stream.Synchronized(_sslsTream);
-            }
-            else
-                _stream = Stream.Synchronized(_tcpClient.GetStream());
+            var res = await _conn.ConnectAsync();
+            if (!res) return false;
 
             StartBackgroundTasks();
             await NegotiateProtocolAsync();
@@ -169,21 +144,13 @@ namespace ElectrumClient
         public void Close()
         {
             StopBackgroundTasks();
-            _stream?.Close();
-            _tcpClient?.Close();
+            _conn.Disconnect();
         }
 
         public void Dispose()
         {
             if (Connected) Close();
-
-            _stream?.Dispose();
-            if (_useSSL) _sslStream?.Dispose();
-            _tcpClient?.Dispose();
-
-            _stream = null;
-            _sslStream = null;
-            _tcpClient = null;
+            _conn.Disconnect();
         }
 
         public async Task<IAsyncResponse<IHexString, IError>> GetBlockHeaderAsync(long height)
@@ -473,19 +440,10 @@ namespace ElectrumClient
 
         private async Task<Resp> SendAndWaitForResponse<Req, Resp>(RequestBase request) where Resp : IIAsyncResponse, new()
         {
-            if (_stream == null) throw new Exception("Client not connected");
+            if (!Connected) throw new Exception("Client not connected");
 
             var requestData = request.GetRequestData<Req>();
-
-            _writeMutex.WaitOne();
-            try
-            {
-                await _stream.WriteAsync(requestData, 0, requestData.Length);
-            }
-            finally
-            {
-                _writeMutex.ReleaseMutex();
-            }
+            await _conn.WriteAsync(requestData, 0, requestData.Length);
 
             GenericResponse? responseMessage = null;
             using (var sph = new SemaphoreSlim(0, 1))
@@ -514,7 +472,7 @@ namespace ElectrumClient
                         }
                         else
                         {
-                            resp.UnmarshallResult(responseMessage.Raw, responseMessage.network);
+                            resp.UnmarshallResult(responseMessage.Raw, ((IAsyncResponseResult)responseMessage).Network);
                         }
                         return resp;
                     }
@@ -562,7 +520,7 @@ namespace ElectrumClient
 
         private static async Task Reader(Client client, CancellationToken ct)
         {
-            if (client._stream == null) throw new Exception("Client not connected");
+            if (!client.Connected) throw new Exception("Client not connected");
 
             while (!ct.IsCancellationRequested)
             {
@@ -572,7 +530,7 @@ namespace ElectrumClient
                 using (MemoryStream memoryStream = new MemoryStream())
                 {
                     int read;
-                    while ((read = await client._stream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+                    while ((read = await client._conn.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
                     {
                         memoryStream.Write(buffer, 0, read);
                         if (read < BUFFERSIZE) break;
@@ -589,7 +547,7 @@ namespace ElectrumClient
                 var packets = receivedData.Split('\n');
                 foreach (string packet in packets)
                 {
-                    var genericResponse = GenericResponse.FromJson(packet, client._network);
+                    var genericResponse = GenericResponse.FromJson(packet, client.Network);
                     if (genericResponse == null) continue;
 
                     switch (genericResponse.Method)
@@ -615,10 +573,9 @@ namespace ElectrumClient
 
         private static void NotifyNewTip(Client client, GenericResponse response)
         {
-            var tipList = TipList.FromJson(response.Raw, client._network);
-            foreach (Tip tip in tipList.Result)
+            var tipList = TipList.FromJson(response.Raw, client.Network);
+            foreach (Tip tip in tipList.List)
             {
-                tip.network = client._network;
                 if (tip.Height != 0)
                     client.NewTip?.Invoke(client, tip);
             }
@@ -632,9 +589,9 @@ namespace ElectrumClient
 
             string? scriptHash = "";
             if (client._scriptHashSubscription.TryGetValue(response.MessageId, out scriptHash))
-                status = (IScriptHashStatus?)fromJson?.Invoke(null, new object?[] { scriptHash, response.Raw, client._network });
+                status = (IScriptHashStatus?)fromJson?.Invoke(null, new object?[] { scriptHash, response.Raw, client.Network });
             else
-                status = (IScriptHashStatus?)fromJson?.Invoke(null, new object?[] { null, response.Raw, client._network });
+                status = (IScriptHashStatus?)fromJson?.Invoke(null, new object?[] { null, response.Raw, client.Network });
             
             if (status != null)
                 client.NewScriptHashStatus?.Invoke(client, status);
@@ -642,7 +599,7 @@ namespace ElectrumClient
 
         private static async Task KeepAlive(Client client, CancellationToken ct)
         {
-            if (client._stream == null) throw new Exception("Client not connected");
+            if (!client.Connected) throw new Exception("Client not connected");
 
             var request = new ServerPingRequest();
             request.MessageId = 0;
@@ -652,23 +609,11 @@ namespace ElectrumClient
                 try { await Task.Delay(client.KeepAliveIntervalMs, ct); } catch (Exception) { }
                 if (!ct.IsCancellationRequested)
                 {
-                    client._writeMutex.WaitOne();
-                    try
-                    {
-                        await client._stream.WriteAsync(requestData, 0, requestData.Length);
-                    }
-                    finally
-                    {
-                        client._writeMutex.ReleaseMutex();
-                    }
+                    await client._conn.WriteAsync(requestData, 0, requestData.Length);
                 }
             }
         }
 
-        private static bool CertificateValidationCallback(object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors sslPolicyError)
-        {
-            // TODO: Implement
-            return true;
-        }
+        
     }
 }

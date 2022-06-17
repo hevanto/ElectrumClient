@@ -9,12 +9,15 @@ namespace ElectrumClient.Response
     {
         public IList<IUnspentOutput> List { get; }
     }
-    public interface IUnspentOutput
+    public interface IUnspentOutput : IAsyncResponseResult
     {
         public long Height { get; }
         public Hash<BitSize256> TxHash { get; }
         public long TxPos { get; }
         public Money Value { get; }
+
+        public ICoin GetCoin(Client client);
+        public long GetConfirmations(Client client);
     }
 
     internal class UnspentOutputList : ResponseBase, IUnspentOutputList
@@ -32,13 +35,17 @@ namespace ElectrumClient.Response
             get
             {
                 var list = new List<IUnspentOutput>();
-                foreach (var item in Result) list.Add(item);
+                foreach (var item in Result)
+                {
+                    ((IAsyncResponseResult)item).SetNetwork(((IAsyncResponseResult)this).Network);
+                    list.Add(item);
+                }
                 return list;
             }
         }
     }
 
-    internal class UnspentOutput : IUnspentOutput
+    internal class UnspentOutput : ResponseBase, IUnspentOutput
     {
         [JsonProperty("value")]
         [JsonConverter(typeof(MoneyConverterSats))]
@@ -47,13 +54,14 @@ namespace ElectrumClient.Response
         [JsonProperty("tx_hash")]
         internal string _txHash;
 
-        public UnspentOutput()
+                public UnspentOutput()
         {
             _value = Money.Zero;
             _txHash = "";
+            _network = Network.TestNet; // Safe default
         }
 
-        
+        private ITransaction? _tx;
 
         [JsonProperty("height")]
         public long Height { get; set; }
@@ -69,6 +77,28 @@ namespace ElectrumClient.Response
             {
                 _value = value;
             }
+        }
+
+        public ICoin GetCoin(Client client)
+        {
+            var tx = GetTx(client);
+            return tx.GetCoins()[(int)TxPos] ;
+        }
+
+        public long GetConfirmations(Client client)
+        {
+            var tx = GetTx(client);
+            return tx.Confirmations ?? 0;
+        }
+
+        private ITransaction GetTx(Client client)
+        {
+            if (_tx != null) return _tx;
+
+            IError? error;
+            _tx = client.GetTransaction(TxHash, out error);
+            if (error != null) throw new Exception(error.ToString());
+            return _tx;
         }
     }
 }

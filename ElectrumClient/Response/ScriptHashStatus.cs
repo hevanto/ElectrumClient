@@ -36,7 +36,7 @@ namespace ElectrumClient.Response
             if (scriptHash != null)
             {
                 status.Result.ScriptHash = scriptHash;
-                status.network = network;
+                ((IAsyncResponseResult)status).SetNetwork(network);
             }
             return status;
         }

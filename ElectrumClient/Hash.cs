@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace ElectrumClient
 {
-    public interface IHash : IAsyncResponseResult, IComparable<IHash>, IEquatable<IHash>, IComparable
+    public interface IHash : IComparable<IHash>, IEquatable<IHash>, IComparable
     {
         public int Size { get; }
         public IHexString Hex { get; }
@@ -148,12 +148,6 @@ namespace ElectrumClient
                 result^= lastInt;
             }
             return result;
-        }
-
-        void IAsyncResponseResult.SetNetwork(Network network)
-        {
-            // Nothind to do here
-            return;
         }
     }
 

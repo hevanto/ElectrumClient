@@ -8,7 +8,7 @@ namespace ElectrumClient.Response
     {
         public IList<IFeeHistogramPoint> List { get; }
     }
-    public interface IFeeHistogramPoint
+    public interface IFeeHistogramPoint : IAsyncResponseResult
     {
         public Money Fee { get; }
         public long VSize { get; }
@@ -30,13 +30,17 @@ namespace ElectrumClient.Response
             get
             {
                 var res = new List<IFeeHistogramPoint>();
-                foreach (var item in Result) res.Add(item);
+                foreach (var item in Result)
+                {
+                    ((IAsyncResponseResult)item).SetNetwork(((IAsyncResponseResult)this).Network);
+                    res.Add(item);
+                }
                 return res;
             } 
         }
     }
 
-    internal class FeeHistogramPoint : IFeeHistogramPoint
+    internal class FeeHistogramPoint : ResponseBase, IFeeHistogramPoint
     {
         private long _fee;
 

@@ -11,17 +11,19 @@ namespace ElectrumClient.Response
         [JsonProperty("id")]
         internal int MessageId { get; set; }
 
-        internal Network network { get; set; }
+        internal Network _network;
+
+        Network IAsyncResponseResult.Network { get { return _network; } }
 
         protected ResponseBase()
         {
             JsonRpcVersion = "";
-            network = Network.TestNet; // Safe default
+            _network = Network.TestNet; // Safe default
         }
 
         void IAsyncResponseResult.SetNetwork(Network network)
         {
-            this.network = network;
+            this._network = network;
         }
     }
 }

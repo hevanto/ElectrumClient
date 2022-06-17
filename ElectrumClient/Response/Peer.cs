@@ -7,7 +7,7 @@ namespace ElectrumClient.Response
     {
         IList<IPeer> List { get; }
     }
-    public interface IPeer
+    public interface IPeer : IAsyncResponseResult
     {
         public string Ip { get; }
         public string HostName { get; }
@@ -33,13 +33,17 @@ namespace ElectrumClient.Response
             get
             {
                 var list = new List<IPeer>();
-                foreach (var item in Result) list.Add(item);
+                foreach (var item in Result)
+                {
+                    ((IAsyncResponseResult)item).SetNetwork(((IAsyncResponseResult)this).Network);
+                    list.Add(item);
+                }
                 return list;
             }
         }
     }
 
-    internal class Peer : IPeer
+    internal class Peer : ResponseBase, IPeer
     {
         public Peer()
         {
