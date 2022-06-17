@@ -1,5 +1,4 @@
 ﻿using ElectrumClient.Converters;
-using ElectrumClient.Hashing;
 using NBitcoin;
 using Newtonsoft.Json;
 

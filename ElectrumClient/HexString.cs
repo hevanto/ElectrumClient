@@ -1,10 +1,5 @@
-﻿using ElectrumClient.Response;
-using NBitcoin;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using NBitcoin;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace ElectrumClient
 {

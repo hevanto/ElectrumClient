@@ -1,5 +1,4 @@
-﻿using ElectrumClient.Hashing;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace ElectrumClient.Response
 {

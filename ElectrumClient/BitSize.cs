@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ElectrumClient
+﻿namespace ElectrumClient
 {
     public interface IBitSize : IComparable<IBitSize>, IEquatable<IBitSize>, IComparable
     {

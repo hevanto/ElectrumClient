@@ -1,6 +1,4 @@
-﻿using NBitcoin;
-
-namespace ElectrumClient.Hashing
+﻿namespace ElectrumClient.Hashing
 {
     internal class SHA384 : AbstractHashFunction, IHashFunction
     {

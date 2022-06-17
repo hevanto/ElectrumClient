@@ -3,10 +3,7 @@ using ElectrumClient.Request;
 using ElectrumClient.Response;
 using NBitcoin;
 using System.Collections.Concurrent;
-using System.Net.Security;
-using System.Net.Sockets;
 using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
 
 namespace ElectrumClient
 {
