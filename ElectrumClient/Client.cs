@@ -375,12 +375,12 @@ namespace ElectrumClient
             return new AsyncResponse<string, Error, string, IError>(resp.ResultValue != null ? resp.ResultValue.Value : null, resp.ErrorValue);
         }
 
-        public string GetServerDonationAddress(out IError? error) => GetServerDonationAddressAsync().Result.ToSyncResponse(out error) ?? Resources.DonationAddress;
+        public string GetServerDonationAddress(out IError? error) => GetServerDonationAddressAsync().Result.ToSyncResponse(out error) ?? "";
 
-        public string GetClientDonationAddress()
+        /*public string GetClientDonationAddress()
         {
             return Resources.DonationAddress;
-        }
+        }*/
 
         public async Task<IAsyncResponse<IServerFeatures, IError>> GetServerFeaturesAsync()
         {
